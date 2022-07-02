@@ -1,0 +1,3 @@
+[submodule "CrossPlatformPhotoApp/GausianBlur"]
+	path = CrossPlatformPhotoApp/GausianBlur
+	url = https://github.com/dmyshe/GausianBlur
