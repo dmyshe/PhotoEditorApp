@@ -1,5 +1,5 @@
 //
-//  ViewController.swift
+//  MainViewController.swift
 //  MultiplatformPhotoApp
 //
 //  Created by Дмитро  on 06/06/22.
@@ -7,6 +7,7 @@
 
 import Cocoa
 import RxSwift
+import RxCocoa
 
 class MainViewController: NSViewController {
     //MARK: - IBOutlets
@@ -22,32 +23,34 @@ class MainViewController: NSViewController {
     
     // MARK: - OperationQueues and Operations
     private var imageBlurringOperationQueue = OperationQueue()
-    private var backgroundBluringOperation: ImageProcessor?
+    private var backgroundImageBluringOperation: ImageProcessor?
     private var photoImageBluringOperation: ImageProcessor?
-   
+    
     //MARK: - Other Properties
-    private var imageURL: URL?
+    private var imageURL: URL? {
+        didSet {
+            checkIfNeedToResetUI()
+            prepareUIForScene()
+        }
+    }
+    
     private var copiedBlurredImageLayer: CALayer?
     
     //MARK: - RxSwift
     private var bag = DisposeBag()
-    private var sliderValue = PublishSubject<Int>()
-    private var imageComparisonValue = PublishSubject<Int>()
-        
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         bindUI()
     }
     
-    //MARK: -IBActions
+    //MARK: - IBActions
     @IBAction func openPhotoImage(_ sender: NSButton) {
         let openPanel = NSOpenPanel()
         openPanel.begin { [weak self] result in
             if result == .OK, let url = openPanel.url {
-                self?.checkIfNeedToResetUI()
                 self?.imageURL = url
-                self?.prepareUIForScene()
             }
         }
     }
@@ -70,12 +73,7 @@ class MainViewController: NSViewController {
         }
     }
     
-    @IBAction func changeBlurForPhotoImage(_ sender: NSSlider) {
-        sliderValue.onNext(sender.integerValue)
-    }
-    
     @IBAction func resetImageModification(sender: NSButton) {
-        sliderValue.onNext(0)
         photoImageBlurLevelSlider.intValue = 0
     }
     
@@ -85,8 +83,9 @@ class MainViewController: NSViewController {
         guard let imageURL = imageURL, let originalImage = NSImage(contentsOf: imageURL) else {
             return
         }
-
-        setupLayerForView(photoImageView, cornerRadius: 10, imageContent: originalImage)
+        
+        setupLayerForView(photoImageView, cornerRadius: 10,
+                          imageContent: originalImage)
     }
     
     //MARK: - Methods
@@ -98,16 +97,16 @@ class MainViewController: NSViewController {
             guard let image = image , let self = self  else { return }
             
             self.setupLayerForView(self.photoImageView,
-                                    cornerRadius: 10,
+                                   cornerRadius: 10,
                                    imageContent: image)
-
-            self.enableSpinner(false)
+            
+            self.showAndAnimateProgressIndicator(false)
             self.saveButton.isEnabled = true
         }
         
         self.photoImageBluringOperation = foregroundImageLoader
         
-        guard let backGroundLoader = backgroundBluringOperation else { return }
+        guard let backGroundLoader = backgroundImageBluringOperation else { return }
         
         foregroundImageLoader.addDependency(backGroundLoader)
         imageBlurringOperationQueue.addOperation(foregroundImageLoader)
@@ -116,14 +115,16 @@ class MainViewController: NSViewController {
     private func applyBlurForBackgroundImage() {
         guard let url = self.imageURL else { return }
         
-        backgroundBluringOperation = ImageProcessor(imagePath: url.path, blurValue: 40)
+        let backgroundBluringOperation = ImageProcessor(imagePath: url.path, blurValue: 40)
         
-        backgroundBluringOperation?.onImageProcced = { [weak self] image in
+        backgroundBluringOperation.onImageProcced = { [weak self] image in
             guard let image = image, let self = self else { return  }
             self.setupLayerForView(self.view,imageContent: image)
-            self.backgroundBluringOperation = nil
+            self.backgroundImageBluringOperation = nil
         }
-        imageBlurringOperationQueue.addOperation(backgroundBluringOperation!)
+        self.backgroundImageBluringOperation = backgroundBluringOperation
+        
+        imageBlurringOperationQueue.addOperation(backgroundBluringOperation)
     }
     
     private func applyBlurToImage(by value: Int) {
@@ -133,7 +134,11 @@ class MainViewController: NSViewController {
         blurOperation.onImageProcced = { [weak self] image in
             guard let image = image , let self = self else { return }
             self.setupLayerForView(self.photoImageView, cornerRadius: 10,imageContent: image)
+            self.showAndAnimateProgressIndicator(false)
+            self.showOnScreenResetAndComparisonButton(true)
+            self.blurLevelLabel.isHidden = true
         }
+        
         
         if let prevOperation = self.photoImageBluringOperation, !prevOperation.isCancelled {
             self.photoImageBluringOperation = blurOperation
@@ -144,23 +149,14 @@ class MainViewController: NSViewController {
         
         self.imageBlurringOperationQueue.cancelAllOperations()
         self.imageBlurringOperationQueue.addOperation(blurOperation)
+    }
         
-        self.enableSpinner(false)
-        self.blurLevelLabel.isHidden = true
-    }
-    
-    private func enableSpinner(_ status: Bool) {
-        self.progressIndicator.isHidden = !status
-        status ? self.progressIndicator.startAnimation(nil) : self.progressIndicator.stopAnimation(nil)
-    }
-
     private func prepareUIForScene() {
         self.applyBlurForBackgroundImage()
         self.setPhotoImageView()
         
         self.photoImageBlurLevelSlider.isHidden = false
-        self.progressIndicator.isHidden = false
-        self.progressIndicator.startAnimation(self)
+        showAndAnimateProgressIndicator(true)
     }
     
     private func setupLayerForView(_ view: NSView, cornerRadius: CGFloat = 0, imageContent: NSImage) {
@@ -176,7 +172,7 @@ class MainViewController: NSViewController {
             photoImageView.layer = nil
             view.layer = nil
             photoImageBlurLevelSlider.intValue = 0
-            backgroundBluringOperation = nil
+            backgroundImageBluringOperation = nil
             photoImageBluringOperation = nil
         }
     }
@@ -185,45 +181,50 @@ class MainViewController: NSViewController {
         photoImageEffectView.alphaValue = 0.9
         photoImageView.wantsLayer = true
         view.wantsLayer = true
-        
+
         imageComparisonButton.isContinuous = true
     }
-    
+        
     private func bindUI() {
-        sliderValue
-            .debounce(.seconds(1), scheduler: MainScheduler.instance)
+        let blurSlider = photoImageBlurLevelSlider.rx.value.changed.share()
+        
+        blurSlider
+            .filter { $0 != 0 }
             .subscribe(onNext: { [weak self] value in
                 guard let self = self else { return }
-                self.applyBlurToImage(by: value)
-                self.showOnScreenResetAndComparisonButton()
+                self.showAndAnimateProgressIndicator(true)
+                self.showBlurLevelLabel(withValue: value,
+                                        status: true)
             })
             .disposed(by: bag)
         
-        sliderValue
-            .subscribe { [weak self] value in
+        blurSlider
+            .filter { $0 != 0.0 }
+            .distinctUntilChanged()
+            .debounce(.seconds(1), scheduler: MainScheduler.instance)
+            .subscribe(onNext: { [weak self] value in
                 guard let self = self else { return }
-                self.blurLevelLabel.isHidden = false
-                self.enableSpinner(true)
-                self.blurLevelLabel.stringValue =
-                "\(Int(Double(value.element ?? 0) / 100 * 100))%"
-            }
-            .disposed(by: bag)
-        
-        sliderValue
-            .filter { $0 == 0 }
-            .subscribe { [weak self] value in
-                guard let self = self else { return }
-                self.resetImageModificationButton.isHidden = true
-            }
+                self.applyBlurToImage(by: Int(value))
+            })
             .disposed(by: bag)
     }
     
-    private func showOnScreenResetAndComparisonButton() {
-        resetImageModificationButton.isHidden = false
-        resetImageModificationButton.isEnabled = true
+    private func showOnScreenResetAndComparisonButton(_ status: Bool) {
+        resetImageModificationButton.isHidden = !status
+        resetImageModificationButton.isEnabled = status
         
-        imageComparisonButton.isHidden = false
-        imageComparisonButton.isEnabled = true
+        imageComparisonButton.isHidden = !status
+        imageComparisonButton.isEnabled = status
     }
-
+    
+    private func showAndAnimateProgressIndicator(_ status: Bool) {
+        self.progressIndicator.isHidden = !status
+        status ? self.progressIndicator.startAnimation(nil) : self.progressIndicator.stopAnimation(nil)
+    }
+    
+    private func showBlurLevelLabel(withValue value: Double = 0.0, status: Bool) {
+        blurLevelLabel.isHidden = false
+        blurLevelLabel.stringValue =
+        "\(Int(Double(value) / 100 * 100))%"
+    }
 }

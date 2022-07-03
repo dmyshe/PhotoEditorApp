@@ -33,12 +33,7 @@
         reverse[i + 1] = g;
         reverse[i + 2] = r;
     }
-    
-    
-//    NSData *nsdata = [NSData dataWithBytes: &reverse length: sizeof(&reverse[0]) * size];
-//    NSImage* image = [[NSImage alloc] initWithData: nsdata];
-
-    
+        
     NSBitmapImageRep *bitmap = [[NSBitmapImageRep alloc]
                                 initWithBitmapDataPlanes:(unsigned char **)&reverse
                                 pixelsWide: blur.getCols()
