@@ -8,19 +8,32 @@
 #import "BlurWrapper.h"
 #import "../GausianBlur/include/Blur.h"
 
+@interface BlurWrapper()
+@property Blur* blur;
+@end
+
 @implementation BlurWrapper
 
-- (NSImage*)proceedImage:(NSString*)strPath value:(int)value {
-    Blur blur;
-    blur.setSource([strPath UTF8String]);
-    blur.setBlurAmount(value);
+- (instancetype)init {
+    self = [super init];
     
-    std::vector<uint8_t> vectorArray = blur.dataChanged();
+    if (self != nil) {
+        _blur = new Blur();
+    }
     
-    const int bytesPerRow = blur.getCols() * blur.getChannels();
+    return self;
+}
 
+- (NSImage*)proceedImage:(NSString*)strPath value:(int)value {
+    _blur->setSource([strPath UTF8String]);
+    _blur->setBlurAmount(value);
+    
+    std::vector<uint8_t> vectorArray = _blur->dataChanged();
+    
+    const int bytesPerRow = _blur->getCols() * _blur->getChannels();
+    
     const size_t size = vectorArray.size();
-   
+    
     unsigned char * reverse = new unsigned char[size];
     
     for (int i = 0; i < size; i+=3)
@@ -33,23 +46,24 @@
         reverse[i + 1] = g;
         reverse[i + 2] = r;
     }
-        
+    
     NSBitmapImageRep *bitmap = [[NSBitmapImageRep alloc]
                                 initWithBitmapDataPlanes:(unsigned char **)&reverse
-                                pixelsWide: blur.getCols()
-                                pixelsHigh: blur.getRows()
+                                pixelsWide: _blur->getCols()
+                                pixelsHigh: _blur->getRows()
                                 bitsPerSample:8
-                                samplesPerPixel: blur.getChannels()
+                                samplesPerPixel: _blur->getChannels()
                                 hasAlpha:NO
                                 isPlanar:NO
                                 colorSpaceName:NSDeviceRGBColorSpace
                                 bytesPerRow: bytesPerRow
-                                bitsPerPixel:8 * blur.getChannels()];
-
+                                bitsPerPixel:8 * _blur->getChannels()];
+    
     NSImage* image = [[NSImage alloc]init];
     [image addRepresentation:bitmap];
-
+    
     return image;
 }
+
 
 @end
