@@ -38,7 +38,7 @@ class MainViewController: NSViewController {
     
     //MARK: - RxSwift
     private var bag = DisposeBag()
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
@@ -99,7 +99,6 @@ class MainViewController: NSViewController {
             self.setupLayerForView(self.photoImageView,
                                    cornerRadius: 10,
                                    imageContent: image)
-            
             self.showAndAnimateProgressIndicator(false)
             self.saveButton.isEnabled = true
         }
@@ -223,7 +222,7 @@ class MainViewController: NSViewController {
     }
     
     private func showBlurLevelLabel(withValue value: Double = 0.0, status: Bool) {
-        blurLevelLabel.isHidden = false
+        blurLevelLabel.isHidden = status
         blurLevelLabel.stringValue =
         "\(Int(Double(value) / 100 * 100))%"
     }
