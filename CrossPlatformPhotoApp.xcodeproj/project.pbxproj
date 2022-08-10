@@ -74,6 +74,22 @@
 			path = ImageProcessor;
 			sourceTree = "<group>";
 		};
+		321F9E6B28849A0C00ACC182 /* ViewControllers */ = {
+			isa = PBXGroup;
+			children = (
+				32D352A028548EB4006F4618 /* MainViewController.swift */,
+			);
+			path = ViewControllers;
+			sourceTree = "<group>";
+		};
+		321F9E6C28849A2000ACC182 /* Storyboards */ = {
+			isa = PBXGroup;
+			children = (
+				32D352A428548EB8006F4618 /* Main.storyboard */,
+			);
+			path = Storyboards;
+			sourceTree = "<group>";
+		};
 		32555F4B2857985D0023A33F /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -83,14 +99,13 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		32555F532857CCE00023A33F /* Supporting Files */ = {
+		32555F532857CCE00023A33F /* Resources */ = {
 			isa = PBXGroup;
 			children = (
 				32D352A228548EB8006F4618 /* Assets.xcassets */,
-				32D352A428548EB8006F4618 /* Main.storyboard */,
 				32D352A728548EB8006F4618 /* CrossPlatformPhotoApp.entitlements */,
 			);
-			path = "Supporting Files";
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		3256605A2858F2FA004116C9 /* BlurWrapper */ = {
@@ -131,10 +146,11 @@
 		32D3529D28548EB4006F4618 /* CrossPlatformPhotoApp */ = {
 			isa = PBXGroup;
 			children = (
+				321F9E6C28849A2000ACC182 /* Storyboards */,
 				32B3E5DE2870EE210055C5E4 /* GausianBlur */,
 				32D33D7B2857CDD000EED761 /* App */,
-				32D352A028548EB4006F4618 /* MainViewController.swift */,
-				32555F532857CCE00023A33F /* Supporting Files */,
+				321F9E6B28849A0C00ACC182 /* ViewControllers */,
+				32555F532857CCE00023A33F /* Resources */,
 				3256605A2858F2FA004116C9 /* BlurWrapper */,
 				32555F47285796EF0023A33F /* CrossPlatformPhotoApp-Bridging-Header.h */,
 				3211316B2863071A00D3EB5A /* ImageProcessor */,

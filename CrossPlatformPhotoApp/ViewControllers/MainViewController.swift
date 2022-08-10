@@ -30,7 +30,7 @@ class MainViewController: NSViewController {
     private var imageURL: URL? {
         didSet {
             checkIfNeedToResetUI()
-            prepareUIForScene()
+            prepareUIOnScreen()
         }
     }
     
@@ -150,7 +150,7 @@ class MainViewController: NSViewController {
         self.imageBlurringOperationQueue.addOperation(blurOperation)
     }
         
-    private func prepareUIForScene() {
+    private func prepareUIOnScreen() {
         self.applyBlurForBackgroundImage()
         self.setPhotoImageView()
         
@@ -185,10 +185,11 @@ class MainViewController: NSViewController {
     }
         
     private func bindUI() {
-        let blurSlider = photoImageBlurLevelSlider.rx.value.changed.share()
+        let blurSlider = photoImageBlurLevelSlider.rx.value.changed
+            .share()
+            .filter { $0 != 0 }
         
         blurSlider
-            .filter { $0 != 0 }
             .subscribe(onNext: { [weak self] value in
                 guard let self = self else { return }
                 self.showAndAnimateProgressIndicator(true)
@@ -198,7 +199,6 @@ class MainViewController: NSViewController {
             .disposed(by: bag)
         
         blurSlider
-            .filter { $0 != 0.0 }
             .distinctUntilChanged()
             .debounce(.seconds(1), scheduler: MainScheduler.instance)
             .subscribe(onNext: { [weak self] value in
